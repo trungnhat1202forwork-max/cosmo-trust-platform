@@ -1,0 +1,37 @@
+name: Upgrade COSMO with real Cocoon media
+
+on:
+  push:
+    branches:
+      - cosmo-real-cocoon-media
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply real Cocoon upgrade
+        run: python scripts/upgrade_real_cocoon.py
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check and build
+        run: npm run build
+
+      - name: Commit generated changes
+        run: |
+          rm -rf .real-cocoon scripts/upgrade_real_cocoon.py .github/workflows/upgrade-real-cocoon.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use real Cocoon products, media, story and COSMO branding"
+          git push origin HEAD:cosmo-real-cocoon-media
