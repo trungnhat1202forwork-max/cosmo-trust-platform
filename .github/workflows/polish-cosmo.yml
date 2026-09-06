@@ -1,0 +1,50 @@
+name: Apply COSMO polish
+
+on:
+  push:
+    branches:
+      - cosmo-polish-media
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct polish script
+        run: |
+          mkdir -p scripts
+          cat .cosmo-polish/part_*.txt > scripts/polish_cosmo.py
+          python -m py_compile scripts/polish_cosmo.py
+
+      - name: Ensure ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+
+      - name: Apply COSMO polish
+        run: python scripts/polish_cosmo.py
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check and build
+        run: npm run build
+
+      - name: Commit generated changes
+        run: |
+          rm -rf .cosmo-polish scripts/polish_cosmo.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Polish COSMO storefront, AI media, and UI alignment"
+          git push origin HEAD:cosmo-polish-media
