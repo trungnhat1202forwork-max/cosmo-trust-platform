@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" role="img" aria-label="Son dưỡng thuần chay">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5e8e1"/><stop offset="1" stop-color="#fbfcf9"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-opacity=".16"/></filter></defs>
+<rect width="900" height="900" rx="44" fill="url(#g)"/>
+<circle cx="150" cy="170" r="135" fill="#fff" opacity=".45"/><circle cx="760" cy="720" r="160" fill="#fff" opacity=".35"/>
+<text x="58" y="76" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#0b1736">COCOON Vietnam</text>
+<text x="58" y="116" font-family="Arial,sans-serif" font-size="22" fill="#667085">COSMO demo storefront</text>
+<g filter="url(#s)"><ellipse cx="450" cy="692" rx="205" ry="42" fill="#0b1736" opacity=".12"/><rect x="350" y="208" width="200" height="430" rx="76" fill="#8a4f43"/><rect x="398" y="158" width="104" height="92" rx="18" fill="#8a4f43"/><rect x="382" y="318" width="136" height="166" rx="18" fill="#f8faf8"/><text x="410" y="357" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#234238">COCOON</text><text x="405" y="393" font-family="Arial,sans-serif" font-size="16" fill="#526b60">COSMO</text><text x="405" y="420" font-family="Arial,sans-serif" font-size="16" fill="#526b60">VERIFIED</text></g>
+<text x="58" y="780" font-family="Arial,sans-serif" font-size="34" font-weight="700" fill="#0b1736">Son dưỡng thuần chay</text>
+<rect x="58" y="814" width="188" height="42" rx="21" fill="#fff" stroke="#dce5df"/><text x="81" y="841" font-family="Arial,sans-serif" font-size="16" fill="#176b5c">Evidence linked</text>
+<rect x="260" y="814" width="176" height="42" rx="21" fill="#fff" stroke="#dce5df"/><text x="285" y="841" font-family="Arial,sans-serif" font-size="16" fill="#176b5c">Trust profile</text>
+<rect x="450" y="814" width="144" height="42" rx="21" fill="#fff" stroke="#dce5df"/><text x="480" y="841" font-family="Arial,sans-serif" font-size="16" fill="#176b5c">QR ready</text>
+</svg>
