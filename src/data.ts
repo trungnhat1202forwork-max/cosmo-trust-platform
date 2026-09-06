@@ -31,69 +31,113 @@ export interface Product {
   description: Localized
   claims: Localized[]
   evidence: Evidence[]
+  sourceUrl?: string
 }
 
-const productAsset = (slug: string) => `/products/${slug}.svg`
+const cocoonAsset = (url: string) => url
 
 export const products: Product[] = [
   {
-    id: 'p1', slug: 'bi-dao-cleansing-water', sku: 'CC-BD-001',
-    name: { vi: 'Nước tẩy trang bí đao', en: 'Winter Melon Micellar Water' },
-    category: { vi: 'Làm sạch', en: 'Cleansing' }, price: 295000,
-    image:productAsset('bi-dao-cleansing-water'), gallery:[productAsset('bi-dao-cleansing-water'),productAsset('bi-dao-cleansing-water'),productAsset('bi-dao-cleansing-water')],
-    status: 'verified', trustScore: 92, updated: '2026-09-05', realPhotos: 7, verifiedReviews: 142,
-    description: { vi: 'Sản phẩm làm sạch dịu nhẹ. Hồ sơ COSMO đối chiếu ảnh quảng cáo, ảnh thực tế, nguồn công bố và review gắn với đơn đã giao.', en: 'A gentle cleansing product. COSMO compares campaign assets, real-life photos, disclosed sources and reviews linked to delivered orders.' },
-    claims: [{ vi: 'Không thử nghiệm trên động vật', en: 'Cruelty-free claim' }, { vi: 'Bao bì và thành phần được công bố', en: 'Packaging and ingredients disclosed' }],
-    evidence: [
-      { id:'e11', title:{vi:'Bộ ảnh sản phẩm thực tế',en:'Real product photo set'}, type:'image', source:{vi:'Doanh nghiệp',en:'Brand'}, verified:true, date:'2026-09-04', note:{vi:'7 ảnh chụp ở nhiều điều kiện ánh sáng.',en:'7 photos across multiple lighting conditions.'}},
-      { id:'e12', title:{vi:'Video chiến dịch 18 giây',en:'18-second campaign video'}, type:'video', source:{vi:'Doanh nghiệp',en:'Brand'}, verified:true, date:'2026-09-04', note:{vi:'Đã chạy kiểm tra tín hiệu chỉnh sửa và lưu mốc cần xem lại.',en:'Scanned for manipulation signals and review markers saved.'}},
-      { id:'e13', title:{vi:'Đối chiếu review với trạng thái giao hàng',en:'Review-to-delivery reconciliation'}, type:'delivery', source:{vi:'Dữ liệu đơn hàng',en:'Order data'}, verified:true, date:'2026-09-05', note:{vi:'142 review gắn với đơn đã giao thành công.',en:'142 reviews linked to delivered orders.'}},
-    ]
+    id:'p1', slug:'nuoc-tay-trang-bi-dao-500ml', sku:'COCOON-WM-MICELLAR-500',
+    name:{vi:'Nước tẩy trang bí đao 500ml',en:'Winter Melon Micellar Water 500ml'},
+    category:{vi:'Làm sạch',en:'Cleansing'}, price:299000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_6_3ec256ca12.jpg')],
+    status:'verified', trustScore:92, updated:'2026-09-07', realPhotos:1, verifiedReviews:4,
+    description:{vi:'Nước tẩy trang Micellar dành cho da dầu, da mụn và da hỗn hợp thiên dầu; công thức có chiết xuất bí đao, rau má, tinh dầu tràm trà và NatraGem™ S150.',en:'Micellar cleansing water for oily and acne-prone skin, formulated with winter melon, centella, tea tree oil and NatraGem™ S150.'},
+    claims:[{vi:'Không chứa cồn, sulfate, dầu khoáng và paraben theo công bố của Cocoon.',en:'Alcohol-, sulfate-, mineral-oil- and paraben-free according to Cocoon.'}],
+    evidence:[{id:'e11',title:{vi:'Ảnh sản phẩm chính thức',en:'Official product image'},type:'image',source:{vi:'Cocoon Vietnam',en:'Cocoon Vietnam'},verified:true,date:'2026-09-07',note:{vi:'Ảnh lấy từ CDN chính thức image.cocoonvietnam.com.',en:'Image sourced from Cocoon’s official CDN.'}}],
+    sourceUrl:'https://cocoonvietnam.com/san-pham/nuoc-tay-trang-bi-dao-500ml'
   },
   {
-    id:'p2', slug:'bi-dao-toner', sku:'CC-BD-002', name:{vi:'Nước cân bằng bí đao',en:'Winter Melon Toner'}, category:{vi:'Cân bằng da',en:'Toner'}, price:195000,
-    image:productAsset('bi-dao-toner'), gallery:[productAsset('bi-dao-toner'),productAsset('bi-dao-toner'),productAsset('bi-dao-toner')], status:'verified', trustScore:89, updated:'2026-09-04', realPhotos:5, verifiedReviews:98,
-    description:{vi:'Hồ sơ đã có đủ ảnh thực tế, thông tin lô và review xác minh giao dịch.',en:'Profile includes real-life imagery, batch information and transaction-verified reviews.'}, claims:[{vi:'Thông tin lô được ghi nhận',en:'Batch information recorded'}], evidence:[]
+    id:'p2', slug:'sua-chong-nang-bi-dao-50ml', sku:'COCOON-WM-SUN-50',
+    name:{vi:'Sữa chống nắng bí đao 50ml',en:'Winter Melon Sun Fluid 50ml'},
+    category:{vi:'Chống nắng',en:'Sun care'}, price:432000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/website_1_99aec50414.png'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/website_1_99aec50414.png')],
+    status:'verified', trustScore:90, updated:'2026-09-07', realPhotos:1, verifiedReviews:2,
+    description:{vi:'Sữa chống nắng quang phổ rộng SPF 50+ PA++++ với chiết xuất bí đao, Synoxyl AZ và Melanin; Cocoon công bố khả năng kháng nước 80 phút.',en:'Broad-spectrum SPF 50+ PA++++ sunscreen with winter melon extract, Synoxyl AZ and Melanin; Cocoon states 80-minute water resistance.'},
+    claims:[{vi:'SPF 50+ PA++++ và UVA-PF 62.6 theo công bố Cocoon.',en:'SPF 50+ PA++++ and UVA-PF 62.6 according to Cocoon.'}],
+    evidence:[{id:'e21',title:{vi:'Ảnh sản phẩm chính thức',en:'Official product image'},type:'image',source:{vi:'Cocoon Vietnam',en:'Cocoon Vietnam'},verified:true,date:'2026-09-07',note:{vi:'Ảnh chính thức có nhãn giải thưởng trên website Cocoon.',en:'Official image as published on Cocoon’s website.'}}],
+    sourceUrl:'https://cocoonvietnam.com/san-pham/sua-chong-nang-bi-dao-50ml'
   },
   {
-    id:'p3', slug:'dak-lak-coffee-scrub', sku:'CC-CF-003', name:{vi:'Cà phê Đắk Lắk làm sạch da chết cơ thể',en:'Dak Lak Coffee Body Polish'}, category:{vi:'Chăm sóc cơ thể',en:'Body care'}, price:175000,
-    image:productAsset('dak-lak-coffee-scrub'), gallery:[productAsset('dak-lak-coffee-scrub'),productAsset('dak-lak-coffee-scrub'),productAsset('dak-lak-coffee-scrub')], status:'verified', trustScore:94, updated:'2026-09-03', realPhotos:9, verifiedReviews:226,
-    description:{vi:'Bằng chứng nguồn nguyên liệu, ảnh đóng gói thực tế và nội dung quảng bá được liên kết trong cùng hồ sơ.',en:'Ingredient-origin evidence, real packaging photos and campaign content are linked in one profile.'}, claims:[{vi:'Nguồn nguyên liệu được công bố',en:'Ingredient origin disclosed'}], evidence:[]
+    id:'p3', slug:'nuoc-bi-dao-can-bang-da-140ml', sku:'COCOON-WM-TONER-140',
+    name:{vi:'Nước bí đao cân bằng da 140ml',en:'Winter Melon Toner 140ml'},
+    category:{vi:'Cân bằng da',en:'Toner'}, price:192000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/z3526520920649_985aed4836bd72ca168fba71c86b4fce_36dbdab1c6.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/z3526520920649_985aed4836bd72ca168fba71c86b4fce_36dbdab1c6.jpg')],
+    status:'verified', trustScore:89, updated:'2026-09-07', realPhotos:1, verifiedReviews:3,
+    description:{vi:'Nước cân bằng không cồn với bí đao, rau má, tràm trà, Vitamin B3, HA và cam thảo; Cocoon mô tả công dụng cân bằng pH, giảm dầu và hỗ trợ da mụn.',en:'Alcohol-free toner with winter melon, centella, tea tree, Vitamin B3, HA and licorice.'},
+    claims:[{vi:'Công thức không chứa cồn theo công bố Cocoon.',en:'Alcohol-free according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/nuoc-bi-dao-can-bang-da-140ml'
   },
   {
-    id:'p4', slug:'hung-yen-turmeric-cleanser', sku:'CC-TM-004', name:{vi:'Gel rửa mặt nghệ Hưng Yên',en:'Hung Yen Turmeric Cleanser'}, category:{vi:'Làm sạch',en:'Cleansing'}, price:245000,
-    image:productAsset('hung-yen-turmeric-cleanser'), gallery:[productAsset('hung-yen-turmeric-cleanser'),productAsset('hung-yen-turmeric-cleanser'),productAsset('hung-yen-turmeric-cleanser')], status:'needs_more', trustScore:67, updated:'2026-09-06', realPhotos:2, verifiedReviews:31,
-    description:{vi:'Hồ sơ đang thiếu tài liệu nguồn cho một tuyên bố định lượng và cần thêm ảnh thực tế.',en:'Profile still lacks source documentation for one quantitative claim and needs more real-life imagery.'}, claims:[{vi:'Một tuyên bố cần bổ sung nguồn',en:'One claim requires source evidence'}], evidence:[]
+    id:'p4', slug:'gel-bi-dao-rua-mat-140ml', sku:'COCOON-WM-CLEANSER-140',
+    name:{vi:'Gel bí đao rửa mặt 140ml',en:'Winter Melon Cleanser 140ml'},
+    category:{vi:'Làm sạch',en:'Cleansing'}, price:192000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/z4394607669965_ca1ceaa3a09cb9e3f966f4ac4256dd9a_1_f787014de5.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/z4394607669965_ca1ceaa3a09cb9e3f966f4ac4256dd9a_1_f787014de5.jpg')],
+    status:'needs_more', trustScore:76, updated:'2026-09-07', realPhotos:1, verifiedReviews:4,
+    description:{vi:'Gel rửa mặt pH 5.5 với bí đao, rau má, tràm trà, Vitamin B3, B5 và Betaine; phù hợp da dầu và da mụn theo website Cocoon.',en:'pH 5.5 cleanser with winter melon, centella, tea tree, Vitamins B3/B5 and betaine.'},
+    claims:[{vi:'pH 5.5 theo công bố sản phẩm.',en:'pH 5.5 according to the product disclosure.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/gel-bi-dao-rua-mat-140ml'
   },
   {
-    id:'p5', slug:'rose-aqua-gel', sku:'CC-RS-005', name:{vi:'Gel dưỡng ẩm hoa hồng',en:'Rose Hydration Gel'}, category:{vi:'Dưỡng ẩm',en:'Moisturizer'}, price:325000,
-    image:productAsset('rose-aqua-gel'), gallery:[productAsset('rose-aqua-gel'),productAsset('rose-aqua-gel'),productAsset('rose-aqua-gel')], status:'review', trustScore:74, updated:'2026-09-06', realPhotos:4, verifiedReviews:54,
-    description:{vi:'Ảnh chiến dịch có lệch màu so với ảnh thực tế; đang chờ người kiểm duyệt xác nhận mức ảnh hưởng.',en:'Campaign imagery shows color drift versus real photos; awaiting human review.'}, claims:[{vi:'Màu bao bì đang được đối chiếu',en:'Packaging color under review'}], evidence:[]
+    id:'p5', slug:'nuoc-tay-trang-hoa-hong-500ml', sku:'COCOON-ROSE-MICELLAR-500',
+    name:{vi:'Nước tẩy trang hoa hồng 500ml',en:'Rose Bi-phase Micellar Water 500ml'},
+    category:{vi:'Làm sạch',en:'Cleansing'}, price:345000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Avatar_Website_Nuoc_tay_trang_hoa_hong_500ml_03a140e9d3.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Avatar_Website_Nuoc_tay_trang_hoa_hong_500ml_03a140e9d3.jpg')],
+    status:'review', trustScore:81, updated:'2026-09-07', realPhotos:1, verifiedReviews:1,
+    description:{vi:'Công thức hai pha với nước cất hoa hồng hữu cơ, Vitamin B5 và Astaxanthin; Cocoon công bố phù hợp mọi loại da.',en:'Bi-phase micellar water with organic rose hydrosol, Vitamin B5 and astaxanthin.'},
+    claims:[{vi:'Không cồn, dầu khoáng, paraben và sulfate theo công bố Cocoon.',en:'Alcohol-, mineral-oil-, paraben- and sulfate-free according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/nuoc-tay-trang-hoa-hong-500ml-1'
   },
   {
-    id:'p6', slug:'pomelo-hair-tonic', sku:'CC-PM-006', name:{vi:'Tinh chất bưởi dưỡng tóc',en:'Pomelo Hair Tonic'}, category:{vi:'Chăm sóc tóc',en:'Hair care'}, price:165000,
-    image:productAsset('pomelo-hair-tonic'), gallery:[productAsset('pomelo-hair-tonic'),productAsset('pomelo-hair-tonic'),productAsset('pomelo-hair-tonic')], status:'verified', trustScore:91, updated:'2026-09-02', realPhotos:6, verifiedReviews:184,
-    description:{vi:'Ảnh, video sử dụng thực tế và review sau giao hàng đã được liên kết.',en:'Real-use photos, video and post-delivery reviews are linked.'}, claims:[{vi:'Video thực tế đã xác minh nguồn',en:'Real-use video source verified'}], evidence:[]
+    id:'p6', slug:'sua-rua-mat-sen-hau-giang-310ml', sku:'COCOON-LOTUS-CLEANSER-310',
+    name:{vi:'Sữa rửa mặt sen Hậu Giang 310ml',en:'Hau Giang Lotus Soothing Cleanser 310ml'},
+    category:{vi:'Làm sạch',en:'Cleansing'}, price:339000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_12_ea031b6b39.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_12_ea031b6b39.jpg')],
+    status:'verified', trustScore:93, updated:'2026-09-07', realPhotos:1, verifiedReviews:0,
+    description:{vi:'Sữa rửa mặt dành cho da nhạy cảm với chiết xuất sen Hậu Giang, Madecassoside, B5, Beta-glucan và Sodium PCA.',en:'Soothing cleanser for sensitive skin with Hau Giang lotus extract, madecassoside, B5, beta-glucan and sodium PCA.'},
+    claims:[{vi:'Không chứa cồn, sulfate, dầu khoáng và paraben theo công bố Cocoon.',en:'Alcohol-, sulfate-, mineral-oil- and paraben-free according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/sua-rua-mat-sen-hau-giang-310ml'
   },
   {
-    id:'p7', slug:'rose-cleanser', sku:'CC-RS-007', name:{vi:'Sữa rửa mặt hoa hồng',en:'Rose Facial Cleanser'}, category:{vi:'Làm sạch',en:'Cleansing'}, price:225000,
-    image:productAsset('rose-cleanser'), gallery:[productAsset('rose-cleanser'),productAsset('rose-cleanser'),productAsset('rose-cleanser')], status:'verified', trustScore:87, updated:'2026-09-01', realPhotos:5, verifiedReviews:81,
-    description:{vi:'Hồ sơ đủ bằng chứng ở mức hiện tại.',en:'Profile is sufficiently evidenced for current publication.'}, claims:[{vi:'Hồ sơ công khai đang hoạt động',en:'Public profile active'}], evidence:[]
+    id:'p7', slug:'ca-phe-dak-lak-lam-sach-da-chet-200ml', sku:'COCOON-COFFEE-BODY-200',
+    name:{vi:'Cà phê Đắk Lắk làm sạch da chết cơ thể 200ml',en:'Dak Lak Coffee Body Polish 200ml'},
+    category:{vi:'Chăm sóc cơ thể',en:'Body care'}, price:133000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/z4147355364575_e4b88c65711b8261d9c996e6797b60a1_83f203bec3.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/z4147355364575_e4b88c65711b8261d9c996e6797b60a1_83f203bec3.jpg')],
+    status:'verified', trustScore:94, updated:'2026-09-07', realPhotos:1, verifiedReviews:0,
+    description:{vi:'Hạt cà phê Đắk Lắk kết hợp bơ ca cao Tiền Giang trong sản phẩm làm sạch da chết cơ thể của Cocoon.',en:'Dak Lak coffee beans paired with Tien Giang cocoa butter in Cocoon’s body polish.'},
+    claims:[{vi:'Không vi hạt nhựa theo công bố Cocoon.',en:'No plastic microbeads according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/ca-phe-dak-lak-lam-sach-da-chet-co-the-200ml'
   },
   {
-    id:'p8', slug:'sun-serum', sku:'CC-SS-008', name:{vi:'Tinh chất chống nắng',en:'Daily Sun Serum'}, category:{vi:'Chống nắng',en:'Sun care'}, price:385000,
-    image:productAsset('sun-serum'), gallery:[productAsset('sun-serum'),productAsset('sun-serum'),productAsset('sun-serum')], status:'needs_more', trustScore:61, updated:'2026-09-06', realPhotos:1, verifiedReviews:18,
-    description:{vi:'Tuyên bố hiệu năng cần bổ sung tài liệu kiểm nghiệm trước khi công bố đầy đủ.',en:'Performance claims require additional test documentation before full publication.'}, claims:[{vi:'Chờ tài liệu kiểm nghiệm',en:'Awaiting test documentation'}], evidence:[]
+    id:'p8', slug:'tinh-chat-xit-duong-sen-hau-giang-200ml', sku:'COCOON-LOTUS-MIST-200',
+    name:{vi:'Tinh chất xịt dưỡng Sen Hậu Giang 200ml',en:'Hau Giang Lotus Soothing Serum Mist 200ml'},
+    category:{vi:'Dưỡng ẩm',en:'Hydration'}, price:368000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Tinh_chat_xit_duong_SHG_KV_411995d512.jpg')],
+    status:'verified', trustScore:91, updated:'2026-09-07', realPhotos:1, verifiedReviews:1,
+    description:{vi:'Tinh chất xịt dưỡng hai tầng với chiết xuất sen hữu cơ Hậu Giang, prebiotics, squalane và các hoạt chất làm dịu.',en:'Two-phase soothing serum mist with organic Hau Giang lotus, prebiotics, squalane and soothing actives.'},
+    claims:[{vi:'Không chứa cồn ethanol, sulfate, dầu khoáng và paraben theo công bố Cocoon.',en:'No ethanol, sulfate, mineral oil or parabens according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/tinh-chat-xit-duong-sen-hau-giang-200ml'
   },
   {
-    id:'p9', slug:'campaign-kit', sku:'CC-KIT-009', name:{vi:'Bộ quà tặng chăm sóc da',en:'Skincare Gift Set'}, category:{vi:'Bộ sản phẩm',en:'Gift set'}, price:645000,
-    image:productAsset('campaign-kit'), gallery:[productAsset('campaign-kit'),productAsset('campaign-kit'),productAsset('campaign-kit')], status:'high_risk', trustScore:42, updated:'2026-09-06', realPhotos:0, verifiedReviews:6,
-    description:{vi:'Video quảng bá có nhiều tín hiệu tổng hợp và hồ sơ thiếu tệp gốc; tạm dừng trạng thái xanh.',en:'Campaign video has multiple synthetic-content signals and lacks source files; green status is suspended.'}, claims:[{vi:'Video cần kiểm duyệt thủ công',en:'Video requires manual review'}], evidence:[]
+    id:'p9', slug:'mat-na-nghe-hung-yen-100ml', sku:'COCOON-TURMERIC-MASK-100',
+    name:{vi:'Mặt nạ nghệ Hưng Yên 100ml',en:'Hung Yen Turmeric Face Mask 100ml'},
+    category:{vi:'Mặt nạ',en:'Face mask'}, price:339000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_48_eb4d856178.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Artboard_48_eb4d856178.jpg'),cocoonAsset('https://image.cocoonvietnam.com/uploads/slide_2_a77d9e7585.jpg'),cocoonAsset('https://image.cocoonvietnam.com/uploads/32262548_slide_3_4c163b8983.jpg'),cocoonAsset('https://image.cocoonvietnam.com/uploads/32262548_slide_2_9926273b34.jpg')],
+    status:'review', trustScore:82, updated:'2026-09-07', realPhotos:1, verifiedReviews:2,
+    description:{vi:'Mặt nạ tinh bột nghệ kết hợp Vitamin B3 và chiết xuất yến mạch, hướng tới da xỉn màu và có vết thâm.',en:'Turmeric-powder mask with Vitamin B3 and oat extract for dull, uneven-looking skin.'},
+    claims:[{vi:'Nghệ Hưng Yên được Cocoon lựa chọn cho dòng làm sáng da.',en:'Cocoon uses Hung Yen turmeric in its brightening line.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/mat-na-nghe-hung-yen-100ml'
   },
   {
-    id:'p10', slug:'lip-balm', sku:'CC-LB-010', name:{vi:'Son dưỡng thuần chay',en:'Vegan Lip Balm'}, category:{vi:'Chăm sóc môi',en:'Lip care'}, price:145000,
-    image:productAsset('lip-balm'), gallery:[productAsset('lip-balm'),productAsset('lip-balm'),productAsset('lip-balm')], status:'verified', trustScore:90, updated:'2026-08-31', realPhotos:8, verifiedReviews:119,
-    description:{vi:'Hồ sơ có ảnh thực tế, nguồn công bố và review xác minh giao dịch.',en:'Profile includes real imagery, disclosed sources and transaction-verified reviews.'}, claims:[{vi:'Có lịch sử thay đổi công khai',en:'Public change history available'}], evidence:[]
+    id:'p10', slug:'gel-tam-bi-dao-500ml', sku:'COCOON-WM-SHOWER-500',
+    name:{vi:'Gel tắm bí đao 500ml',en:'Winter Melon Shower Gel 500ml'},
+    category:{vi:'Tắm & dưỡng thể',en:'Body wash'}, price:275000,
+    image:cocoonAsset('https://image.cocoonvietnam.com/uploads/Avatar_Website_Gel_tam_bi_dao_500ml_0870b26d17.jpg'), gallery:[cocoonAsset('https://image.cocoonvietnam.com/uploads/Avatar_Website_Gel_tam_bi_dao_500ml_0870b26d17.jpg')],
+    status:'needs_more', trustScore:79, updated:'2026-09-07', realPhotos:1, verifiedReviews:1,
+    description:{vi:'Gel tắm có bí đao, BHA, tinh dầu tràm trà và Crinipan PMC; Cocoon mô tả sản phẩm hỗ trợ làm sạch bã nhờn và da cơ thể có mụn.',en:'Body wash with winter melon, BHA, tea tree oil and Crinipan PMC.'},
+    claims:[{vi:'Không triclosan, dầu khoáng, paraben và cồn ethanol theo công bố Cocoon.',en:'No triclosan, mineral oil, parabens or ethanol according to Cocoon.'}],
+    evidence:[], sourceUrl:'https://cocoonvietnam.com/san-pham/gel-tam-bi-dao-500ml'
   },
 ]
 

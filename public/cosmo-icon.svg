@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-label="COSMO">
+<path d="M110 20 178 50v54c0 45-27 73-68 93-41-20-68-48-68-93V50Z" fill="none" stroke="#06295a" stroke-width="16" stroke-linejoin="round"/>
+<path d="m76 104 25 25 48-54" fill="none" stroke="#12b89c" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M20 145c31 35 98 45 159 3 20-14 27-25 33-37" fill="none" stroke="#12b89c" stroke-width="13" stroke-linecap="round"/>
+<circle cx="191" cy="102" r="12" fill="#12b89c"/>
+</svg>
