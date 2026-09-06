@@ -24,8 +24,8 @@ jobs:
           rm -rf /tmp/cosmo-source
           mkdir -p /tmp/cosmo-source
           unzip -q /tmp/cosmo-source.zip -d /tmp/cosmo-source
-          rsync -a --delete --exclude='.git' --exclude='.bootstrap' /tmp/cosmo-source/cosmo-trust-platform/ ./
-          rm -rf .bootstrap .github/workflows/bootstrap.yml
+          rsync -a --delete --exclude='.git' --exclude='.bootstrap' --exclude='.github/workflows' /tmp/cosmo-source/cosmo-trust-platform/ ./
+          rm -rf .bootstrap
       - name: Commit source
         shell: bash
         run: |
