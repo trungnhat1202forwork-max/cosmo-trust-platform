@@ -1,0 +1,48 @@
+name: COSMO Live Cloudflare E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for Cloudflare production release
+        run: |
+          for i in $(seq 1 36); do
+            body=$(curl -fsSL --max-time 15 "https://cosmotrustplatform.pages.dev/release.json?attempt=$i" || true)
+            if echo "$body" | grep -q 'final-production-pass'; then
+              echo "Cloudflare is serving the final production release."
+              exit 0
+            fi
+            echo "Waiting for Cloudflare deployment ($i/36)..."
+            sleep 10
+          done
+          echo "Cloudflare did not expose the final release marker in time."
+          exit 1
+
+      - name: Run desktop and mobile live journeys
+        env:
+          COSMO_BASE_URL: https://cosmotrustplatform.pages.dev
+        run: npx playwright test tests/live-e2e.spec.ts --workers=1 --reporter=line

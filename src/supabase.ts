@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Public client configuration for the COSMO demo project.
+// Public client configuration for the COSMO workspace.
 // These values are safe to expose in browser code because the project uses a
 // Supabase publishable key plus Row Level Security. Environment variables can
 // override them later without changing source code.
@@ -11,7 +11,7 @@ const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || default
 const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) || defaultPublishableKey
 
 export const supabase = createClient(url, key, {
-  auth: { persistSession: false },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 })
 
 export const hasSupabase = Boolean(url && key)

@@ -1,6 +1,6 @@
 import * as ort from 'onnxruntime-web'
 
-const MODEL_URL = 'https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT/resolve/main/onnx/model_int8.onnx'
+const MODEL_URL = '/models/image-deepfake.onnx'
 const MODEL_NAME = 'CommunityForensics DeepfakeDet-ViT'
 const MODEL_VARIANT = 'corrected v1.1 INT8 (July 2026)'
 
