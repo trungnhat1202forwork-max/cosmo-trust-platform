@@ -10,6 +10,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import { dashboardTasks, complaints, formatVnd, products as seedProducts, scanScenarios, txt, type Lang, type Product, type TrustStatus } from './data'
 import { hasSupabase, supabase } from './supabase'
+import { classifyBlob, classifyVideoFile, type ImageForensicsResult, type VideoForensicsResult } from './forensics'
 
 type View = 'home' | 'shop' | 'product' | 'trust' | 'admin'
 type AdminSection = 'dashboard' | 'products' | 'ai' | 'reviews' | 'widget' | 'complaints' | 'reports' | 'integrations' | 'scope'
@@ -234,21 +235,155 @@ function ProductsAdmin({lang,products,go,flash,setProducts}:{lang:Lang;products:
 }
 
 function AILab({lang,flash,products}:{lang:Lang;flash:(s:string)=>void;products:Product[]}){
-  const vi=lang==='vi'; const [type,setType]=useState<'video'|'image'|'audio'|'text'|'compare'>('video'); const [running,setRunning]=useState(false); const [progress,setProgress]=useState(0); const [uploaded,setUploaded]=useState(''); const [file,setFile]=useState<File|null>(null); const [preview,setPreview]=useState(''); const [productSlug,setProductSlug]=useState(products[1]?.slug||products[0]?.slug); const [technical,setTechnical]=useState<Array<{label:string;value:string;note?:string}>>([])
+  const vi=lang==='vi'
+  const [type,setType]=useState<'video'|'image'|'audio'|'text'|'compare'>('image')
+  const [running,setRunning]=useState(false)
+  const [progress,setProgress]=useState(0)
+  const [uploaded,setUploaded]=useState('')
+  const [file,setFile]=useState<File|null>(null)
+  const [preview,setPreview]=useState('')
+  const [productSlug,setProductSlug]=useState(products[0]?.slug)
+  const [technical,setTechnical]=useState<Array<{label:string;value:string;note?:string}>>([])
+  const [imageAI,setImageAI]=useState<ImageForensicsResult|null>(null)
+  const [videoAI,setVideoAI]=useState<VideoForensicsResult|null>(null)
+  const [modelError,setModelError]=useState('')
   const selectedProduct=products.find(p=>p.slug===productSlug)||products[0]
+
   useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview])
-  const setLocalFile=(f:File|null)=>{if(preview)URL.revokeObjectURL(preview);setFile(f);setUploaded(f?.name||'');setTechnical([]);setPreview(f?URL.createObjectURL(f):'')}
+
+  const resetResults=()=>{setTechnical([]);setImageAI(null);setVideoAI(null);setModelError('');setProgress(0)}
+  const setLocalFile=(f:File|null)=>{
+    if(preview)URL.revokeObjectURL(preview)
+    setFile(f);setUploaded(f?.name||'');setPreview(f?URL.createObjectURL(f):'');resetResults()
+  }
   const bytes=(n:number)=>n>1024*1024?`${(n/1024/1024).toFixed(2)} MB`:`${(n/1024).toFixed(1)} KB`
-  const analyzeImage=async(blob:Blob)=>{const bitmap=await createImageBitmap(blob);const c=document.createElement('canvas');c.width=64;c.height=64;const ctx=c.getContext('2d')!;ctx.drawImage(bitmap,0,0,64,64);const d=ctx.getImageData(0,0,64,64).data;let lum=0,edge=0;for(let i=0;i<d.length;i+=4)lum+=(d[i]+d[i+1]+d[i+2])/3;for(let y=0;y<64;y++)for(let x=1;x<64;x++){const i=(y*64+x)*4,j=i-4;edge+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])}return [{label:vi?'Kích thước ảnh':'Image dimensions',value:`${bitmap.width} × ${bitmap.height}px`},{label:vi?'Độ sáng trung bình':'Mean brightness',value:`${Math.round(lum/(d.length/4))}/255`},{label:vi?'Năng lượng biên':'Edge energy',value:Math.round(edge/(64*63*3)).toString(),note:vi?'Chỉ số pixel thực, không phải xác suất deepfake.':'Real pixel metric, not a deepfake probability.'}]}
-  const analyzeAudio=async(f:File)=>{const ac=new AudioContext();const b=await ac.decodeAudioData(await f.arrayBuffer());const ch=b.getChannelData(0);let sq=0,peak=0,clip=0;for(let i=0;i<ch.length;i++){const a=Math.abs(ch[i]);sq+=a*a;if(a>peak)peak=a;if(a>.99)clip++}await ac.close();return [{label:vi?'Thời lượng':'Duration',value:`${b.duration.toFixed(2)} s`},{label:vi?'Tần số lấy mẫu':'Sample rate',value:`${b.sampleRate} Hz`},{label:vi?'Số kênh':'Channels',value:String(b.numberOfChannels)},{label:'RMS',value:Math.sqrt(sq/ch.length).toFixed(4)},{label:vi?'Đỉnh tín hiệu':'Peak',value:peak.toFixed(4)},{label:vi?'Tỷ lệ clipping':'Clipping ratio',value:`${(clip/ch.length*100).toFixed(3)}%`,note:vi?'Đo trực tiếp từ waveform đã tải lên.':'Measured directly from the uploaded waveform.'}]}
-  const analyzeVideo=async(f:File)=>await new Promise<Array<{label:string;value:string;note?:string}>>((resolve,reject)=>{const u=URL.createObjectURL(f);const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>{resolve([{label:vi?'Thời lượng':'Duration',value:`${v.duration.toFixed(2)} s`},{label:vi?'Độ phân giải':'Resolution',value:`${v.videoWidth} × ${v.videoHeight}`},{label:vi?'Dung lượng':'File size',value:bytes(f.size)},{label:vi?'Định dạng':'MIME type',value:f.type||'unknown',note:vi?'Metadata đọc trực tiếp từ file video cục bộ.':'Metadata read directly from the local video file.'}]);URL.revokeObjectURL(u)};v.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('video metadata'))};v.src=u})
-  const run=async()=>{setRunning(true);setProgress(12);try{let rows:Array<{label:string;value:string;note?:string}>=[];if(file){setProgress(35);if(type==='image'||type==='compare')rows=await analyzeImage(file);else if(type==='audio')rows=await analyzeAudio(file);else if(type==='video')rows=await analyzeVideo(file);else rows=[{label:vi?'Tệp đã nhận':'File received',value:`${file.name} · ${bytes(file.size)}`},{label:vi?'Phạm vi':'Scope',value:vi?'Kiểm tra kỹ thuật thật trên tệp':'Real technical inspection on file'}]}else if(type==='image'||type==='compare'){setProgress(35);const r=await fetch(selectedProduct.image,{cache:'no-store'});const b=await r.blob();rows=await analyzeImage(b);rows.unshift({label:vi?'Nguồn media':'Media source',value:'Cocoon Vietnam official product image'})}else if(type==='video'||type==='audio'){rows=[{label:vi?'Nguồn media':'Media source',value:'Cocoon Vietnam Official · YouTube'},{label:vi?'Video chính thức':'Official video',value:'Sữa chống nắng bí đao · 08/12/2023'},{label:vi?'Phạm vi chạy thật':'Real inspection scope',value:vi?'Xác minh nguồn công khai; để đọc frame/waveform cần tải file lên.':'Public-source verification; upload a file for frame/waveform inspection.'},{label:vi?'Mô hình deepfake':'Deepfake model',value:vi?'Chưa kết nối — COSMO không bịa kết luận.':'Not connected — COSMO does not fabricate a verdict.'}]}else{rows=[{label:vi?'Độ dài mô tả':'Description length',value:`${txt(selectedProduct.description,lang).length} chars`},{label:vi?'Số claim đang theo dõi':'Tracked claims',value:String(selectedProduct.claims.length)},{label:vi?'Nguồn':'Source',value:'cocoonvietnam.com'}]}setProgress(90);setTechnical(rows);setProgress(100)}catch(e){setTechnical([{label:vi?'Không thể phân tích':'Analysis unavailable',value:vi?'Trình duyệt không đọc được media này. Hãy tải file cục bộ lên để kiểm tra.':'The browser could not inspect this media. Upload a local file to analyze.'}])}finally{setTimeout(()=>setRunning(false),250)}}
-  return <div className="admin-body"><div className="ai-intro"><div><span className="eyebrow"><Bot size={16}/>{vi?'PHÒNG KIỂM TRA ĐA PHƯƠNG TIỆN':'MULTIMEDIA INSPECTION LAB'}</span><h2>{vi?'Media thật — Phân tích thật trong phạm vi trình duyệt — Không bịa kết luận AI.':'Real media — real browser-side inspection — no fabricated AI verdict.'}</h2><p>{vi?'Ảnh sản phẩm được lấy từ website Cocoon chính thức. Video/âm thanh mẫu dùng nguồn từ kênh Cocoon Vietnam Official. Với file bạn tải lên, COSMO đọc metadata và tín hiệu kỹ thuật thực tế ngay trong trình duyệt.':'Product imagery comes from Cocoon’s official site. Video/audio sample uses Cocoon Vietnam Official. Uploaded files are inspected locally for real metadata and technical signal measurements.'}</p></div><button className="secondary" onClick={()=>flash(vi?'Deepfake inference chưa được kết nối. Bản này chỉ kết luận những gì thực sự đo được.':'Deepfake inference is not connected. This build only reports what it can actually measure.')}><CircleHelp size={17}/>{vi?'Giới hạn phân tích':'Analysis limits'}</button></div>
-    <div className="toolbar ai-toolbar"><div className="ai-tabs">{[['video',Video,vi?'Video':'Video'],['image',Image,vi?'Hình ảnh':'Image'],['audio',Activity,vi?'Âm thanh':'Audio'],['text',MessageSquareText,vi?'Văn bản & review':'Text & reviews'],['compare',RefreshCcw,vi?'Đối chiếu ảnh':'Image compare']].map(([id,I,l]:any)=>{const Icon=I;return <button key={id} className={type===id?'active':''} onClick={()=>{setType(id);setTechnical([]);setLocalFile(null)}}><Icon size={17}/>{l}</button>})}</div><div className="product-select"><label>{vi?'Sản phẩm thật':'Real product'}</label><select value={productSlug} onChange={e=>{setProductSlug(e.target.value);setTechnical([])}}>{products.map(p=><option key={p.id} value={p.slug}>{txt(p.name,lang)}</option>)}</select></div></div>
-    <div className="ai-grid"><section className="panel media-panel"><div className="panel-title"><div><h2>{vi?'Nội dung cần kiểm tra':'Content to inspect'}</h2><p>{txt(selectedProduct.name,lang)} · COCOON Vietnam</p></div><span className="real-source-badge"><CheckCircle2 size={14}/>{vi?'Nguồn thật':'Real source'}</span></div><div className="asset-head"><img src={selectedProduct.image} alt={txt(selectedProduct.name,lang)}/><div><small>{selectedProduct.sku}</small><b>{txt(selectedProduct.name,lang)}</b>{selectedProduct.sourceUrl&&<a href={selectedProduct.sourceUrl} target="_blank" rel="noreferrer">{vi?'Mở trang Cocoon chính thức':'Open official Cocoon page'} <ArrowRight size={13}/></a>}</div></div>
-      {type==='video'?<div className="official-media"><iframe src="https://www.youtube.com/embed/rH86s5h8yQs?rel=0" title="Cocoon official winter melon sunscreen video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe><div className="official-caption"><Video size={17}/><span>{vi?'Video chính thức từ Cocoon Vietnam Official: Sữa chống nắng bí đao.':'Official Cocoon Vietnam video: Winter Melon Sunscreen.'}</span></div></div>:type==='audio'?<div className="official-media audio-source"><iframe src="https://www.youtube.com/embed/rH86s5h8yQs?rel=0" title="Cocoon official audio source" allow="autoplay; encrypted-media" allowFullScreen></iframe><p>{vi?'Âm thanh mẫu phát trực tiếp từ video chính thức của Cocoon. Để đo waveform/spectrum thật, tải file audio cục bộ ở dưới.':'Sample audio plays from Cocoon’s official video. Upload a local audio file below for real waveform/spectrum metrics.'}</p></div>:type==='image'?<div className="image-inspect"><img src={preview||selectedProduct.image} alt={txt(selectedProduct.name,lang)}/><div className="inspect-note"><b>{preview?(vi?'Ảnh bạn vừa tải lên':'Your uploaded image'):(vi?'Ảnh sản phẩm chính thức Cocoon':'Official Cocoon product image')}</b><p>{vi?'Nhấn “Chạy phân tích kỹ thuật” để đo kích thước, độ sáng và năng lượng biên trực tiếp từ pixel.':'Run technical inspection to measure dimensions, brightness and edge energy directly from pixels.'}</p></div></div>:type==='text'?<div className="text-inspect"><div className="claim-card"><small>{vi?'Mô tả nguồn Cocoon':'Cocoon source description'}</small><b>{txt(selectedProduct.name,lang)}</b><p>{txt(selectedProduct.description,lang)}</p></div><div className="claim-list">{selectedProduct.claims.map((c,i)=><div key={i}><CheckCircle2 size={17}/><span>{txt(c,lang)}</span></div>)}</div></div>:<div className="compare-inspect"><div><small>{vi?'Ảnh nguồn Cocoon':'Cocoon source image'}</small><img src={selectedProduct.image}/></div><div><small>{preview?(vi?'Ảnh tải lên để đối chiếu':'Uploaded comparison'):(vi?'Chưa có ảnh đối chiếu':'No comparison image yet')}</small>{preview?<img src={preview}/>:<div className="empty-compare">{vi?'Tải một ảnh bên dưới để đối chiếu kỹ thuật.':'Upload an image below for technical comparison.'}</div>}</div></div>}
-      <label className="upload-bar"><Upload size={18}/><div><b>{uploaded||(vi?'Tải media để phân tích thật':'Upload media for real inspection')}</b><small>{vi?'Tệp chỉ được đọc cục bộ trong trình duyệt ở prototype này.':'The prototype reads the file locally in your browser.'}</small></div><input type="file" accept={type==='video'?'video/*':type==='image'||type==='compare'?'image/*':type==='audio'?'audio/*':'*/*'} onChange={e=>setLocalFile(e.target.files?.[0]||null)}/></label><button className="primary full large" disabled={running} onClick={run}>{running?<><RefreshCcw className="spin" size={18}/>{vi?'Đang đo tín hiệu…':'Inspecting signals…'} {progress}%</>:<><ScanSearch size={18}/>{vi?'Chạy phân tích kỹ thuật thật':'Run real technical inspection'}</>}</button>{running&&<div className="progress"><span style={{width:`${progress}%`}}></span></div>}</section>
-      <section className="panel result-panel real-analysis-panel"><div className="result-head"><div><small>{vi?'KẾT QUẢ ĐO ĐƯỢC':'MEASURED RESULTS'}</small><h2>{technical.length?(vi?'Đã phân tích':'Inspected'):(vi?'Chưa chạy':'Not run')}</h2></div><span className="real-source-badge"><Database size={14}/>{vi?'Không preset':'Not preset'}</span></div>{technical.length?<div className="technical-results">{technical.map((r,i)=><div key={i}><span>{r.label}</span><strong>{r.value}</strong>{r.note&&<small>{r.note}</small>}</div>)}</div>:<div className="analysis-empty"><ScanSearch size={36}/><h3>{vi?'Chạy phân tích để nhận dữ liệu thật':'Run inspection to get real measurements'}</h3><p>{vi?'COSMO sẽ không tự gán “82% deepfake” cho media nếu chưa có model thực sự chạy.':'COSMO will not assign a fake “82% deepfake” score unless a real model actually runs.'}</p></div>}<div className="method-note"><ShieldCheck size={17}/><p>{vi?'Bản hiện tại thực hiện kiểm tra kỹ thuật cục bộ. Để kết luận deepfake cần tích hợp model chuyên dụng hoặc API inference ở bước tiếp theo.':'This build performs genuine local technical inspection. Deepfake classification requires a dedicated model or inference API in the next stage.'}</p></div></section></div>
+  const pct=(n:number)=>`${(n*100).toFixed(1)}%`
+
+  const analyzeImage=async(blob:Blob)=>{
+    const bitmap=await createImageBitmap(blob)
+    try{
+      const c=document.createElement('canvas');c.width=64;c.height=64
+      const ctx=c.getContext('2d')!;ctx.drawImage(bitmap,0,0,64,64)
+      const d=ctx.getImageData(0,0,64,64).data
+      let lum=0,edge=0
+      for(let i=0;i<d.length;i+=4)lum+=(d[i]+d[i+1]+d[i+2])/3
+      for(let y=0;y<64;y++)for(let x=1;x<64;x++){const i=(y*64+x)*4,j=i-4;edge+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])}
+      return [
+        {label:vi?'Kích thước ảnh':'Image dimensions',value:`${bitmap.width} × ${bitmap.height}px`},
+        {label:vi?'Độ sáng trung bình':'Mean brightness',value:`${Math.round(lum/(d.length/4))}/255`},
+        {label:vi?'Năng lượng biên':'Edge energy',value:Math.round(edge/(64*63*3)).toString(),note:vi?'Chỉ số pixel đo trực tiếp.':'Direct pixel measurement.'},
+      ]
+    }finally{bitmap.close()}
+  }
+
+  const analyzeAudio=async(f:File)=>{
+    const ac=new AudioContext();const b=await ac.decodeAudioData(await f.arrayBuffer());const ch=b.getChannelData(0)
+    let sq=0,peak=0,clip=0,zeroCross=0
+    for(let i=0;i<ch.length;i++){const a=Math.abs(ch[i]);sq+=a*a;if(a>peak)peak=a;if(a>.99)clip++;if(i>0&&((ch[i]>=0)!==(ch[i-1]>=0)))zeroCross++}
+    await ac.close()
+    return [
+      {label:vi?'Thời lượng':'Duration',value:`${b.duration.toFixed(2)} s`},
+      {label:vi?'Tần số lấy mẫu':'Sample rate',value:`${b.sampleRate} Hz`},
+      {label:vi?'Số kênh':'Channels',value:String(b.numberOfChannels)},
+      {label:'RMS',value:Math.sqrt(sq/ch.length).toFixed(4)},
+      {label:vi?'Đỉnh tín hiệu':'Peak',value:peak.toFixed(4)},
+      {label:vi?'Tỷ lệ clipping':'Clipping ratio',value:`${(clip/ch.length*100).toFixed(3)}%`},
+      {label:vi?'Zero-crossing rate':'Zero-crossing rate',value:(zeroCross/ch.length).toFixed(4),note:vi?'Đo trực tiếp từ waveform; không phải xác suất giọng giả.':'Measured from the waveform; not a synthetic-voice probability.'},
+    ]
+  }
+
+  const analyzeVideoMetadata=async(f:File)=>await new Promise<Array<{label:string;value:string;note?:string}>>((resolve,reject)=>{
+    const u=URL.createObjectURL(f);const v=document.createElement('video');v.preload='metadata'
+    v.onloadedmetadata=()=>{resolve([
+      {label:vi?'Thời lượng':'Duration',value:`${v.duration.toFixed(2)} s`},
+      {label:vi?'Độ phân giải':'Resolution',value:`${v.videoWidth} × ${v.videoHeight}`},
+      {label:vi?'Dung lượng':'File size',value:bytes(f.size)},
+      {label:vi?'Định dạng':'MIME type',value:f.type||'unknown',note:vi?'Metadata đọc trực tiếp từ file video.':'Metadata read directly from the video file.'},
+    ]);URL.revokeObjectURL(u)}
+    v.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('video metadata'))};v.src=u
+  })
+
+  const run=async()=>{
+    setRunning(true);setProgress(8);setModelError('');setImageAI(null);setVideoAI(null)
+    try{
+      let rows:Array<{label:string;value:string;note?:string}>=[]
+      if(type==='image'||type==='compare'){
+        setProgress(18)
+        let blob:Blob
+        if(file) blob=file
+        else{
+          const response=await fetch(selectedProduct.image,{cache:'no-store'})
+          if(!response.ok)throw new Error('official image fetch failed')
+          blob=await response.blob()
+        }
+        rows=await analyzeImage(blob)
+        rows.unshift({label:vi?'Nguồn media':'Media source',value:file?file.name:'Cocoon Vietnam · official product image'})
+        setTechnical(rows);setProgress(32)
+        const ai=await classifyBlob(blob)
+        setImageAI(ai);setProgress(100)
+      }else if(type==='video'){
+        if(!file){
+          setTechnical([
+            {label:vi?'Nguồn video':'Video source',value:'Cocoon Vietnam Official · YouTube'},
+            {label:vi?'Trạng thái':'Status',value:vi?'Video thật đang phát; cần tải file video lên để model đọc frame.':'Real video is playing; upload a video file for frame inference.'},
+            {label:vi?'Lý do':'Why',value:vi?'Trình duyệt không cho lấy pixel từ iframe YouTube khác miền.':'Browsers block pixel extraction from a cross-origin YouTube iframe.'},
+          ])
+          setProgress(100)
+        }else{
+          rows=await analyzeVideoMetadata(file);setTechnical(rows);setProgress(28)
+          const result=await classifyVideoFile(file,(done,total)=>setProgress(30+Math.round(done/total*65)))
+          setVideoAI(result);setProgress(100)
+        }
+      }else if(type==='audio'){
+        if(!file){
+          setTechnical([
+            {label:vi?'Nguồn audio':'Audio source',value:'Cocoon Vietnam Official · YouTube'},
+            {label:vi?'Phân tích thật':'Real analysis',value:vi?'Tải file audio lên để đo waveform ngay trong trình duyệt.':'Upload audio to measure its waveform in-browser.'},
+          ])
+        }else setTechnical(await analyzeAudio(file))
+        setProgress(100)
+      }else{
+        setTechnical([
+          {label:vi?'Độ dài mô tả':'Description length',value:`${txt(selectedProduct.description,lang).length} chars`},
+          {label:vi?'Số claim đang theo dõi':'Tracked claims',value:String(selectedProduct.claims.length)},
+          {label:vi?'Nguồn':'Source',value:'cocoonvietnam.com'},
+        ]);setProgress(100)
+      }
+    }catch(e:any){
+      setModelError(e?.message||String(e))
+      setTechnical(prev=>prev.length?prev:[{label:vi?'Không thể phân tích':'Analysis unavailable',value:vi?'Không thể chạy model trên media này.':'Unable to run the model on this media.'}])
+    }finally{setTimeout(()=>setRunning(false),250)}
+  }
+
+  const imageVerdict=imageAI?(imageAI.verdict==='likely_fake'?(vi?'Có khả năng do AI tạo':'Likely AI-generated'):(vi?'Có khả năng là ảnh thật':'Likely real')):''
+  const videoVerdict=videoAI?(videoAI.verdict==='likely_fake'?(vi?'Nhiều frame có tín hiệu AI':'Multiple frames show AI signals'):videoAI.verdict==='mixed'?(vi?'Tín hiệu hỗn hợp — cần xem lại':'Mixed signals — review needed'):(vi?'Các frame mẫu thiên về ảnh thật':'Sampled frames lean real')):''
+
+  return <div className="admin-body">
+    <div className="ai-intro"><div><span className="eyebrow"><Bot size={16}/>{vi?'PHÒNG KIỂM TRA ĐA PHƯƠNG TIỆN':'MULTIMEDIA INSPECTION LAB'}</span><h2>{vi?'Media thật + model thật + kết quả sinh tại thời điểm bạn bấm chạy.':'Real media + real model + results generated when you run it.'}</h2><p>{vi?'Ảnh được chạy bằng CommunityForensics DeepfakeDet-ViT bản weights/config đã sửa tháng 7/2026. Video được lấy frame thật từ file tải lên và chạy cùng model trên từng frame.':'Images run through the corrected July 2026 CommunityForensics DeepfakeDet-ViT. Uploaded videos are sampled into real frames and each frame is classified by the same model.'}</p></div><button className="secondary" onClick={()=>flash(vi?'Đây là detector ảnh AI nghiên cứu, không phải bằng chứng tuyệt đối. Video dùng frame-level inference, chưa phân tích chuyển động theo thời gian.':'This is a research AI-image detector, not absolute proof. Video uses frame-level inference and does not yet model temporal motion.')}><CircleHelp size={17}/>{vi?'Giới hạn model':'Model limits'}</button></div>
+
+    <div className="model-live-banner"><span className="model-live-dot"></span><div><b>{vi?'Inference chạy thật trong trình duyệt':'Real in-browser inference'}</b><small>CommunityForensics DeepfakeDet-ViT · corrected v1.1 INT8 · ONNX Runtime Web · {vi?'tải model lần đầu khoảng 22 MB':'first model load ~22 MB'}</small></div></div>
+
+    <div className="toolbar ai-toolbar"><div className="ai-tabs">{[['image',Image,vi?'Hình ảnh':'Image'],['video',Video,vi?'Video':'Video'],['audio',Activity,vi?'Âm thanh':'Audio'],['text',MessageSquareText,vi?'Văn bản & review':'Text & reviews'],['compare',RefreshCcw,vi?'Đối chiếu ảnh':'Image compare']].map(([id,I,l]:any)=>{const Icon=I;return <button key={id} className={type===id?'active':''} onClick={()=>{setType(id);resetResults();setLocalFile(null)}}><Icon size={17}/>{l}</button>})}</div><div className="product-select"><label>{vi?'Sản phẩm thật':'Real product'}</label><select value={productSlug} onChange={e=>{setProductSlug(e.target.value);resetResults()}}>{products.map(p=><option key={p.id} value={p.slug}>{txt(p.name,lang)}</option>)}</select></div></div>
+
+    <div className="ai-grid"><section className="panel media-panel"><div className="panel-title"><div><h2>{vi?'Nội dung cần kiểm tra':'Content to inspect'}</h2><p>{txt(selectedProduct.name,lang)} · COCOON Vietnam</p></div><span className="real-source-badge"><CheckCircle2 size={14}/>{vi?'Nguồn thật':'Real source'}</span></div>
+      <div className="asset-head"><img src={selectedProduct.image} alt={txt(selectedProduct.name,lang)}/><div><small>{selectedProduct.sku}</small><b>{txt(selectedProduct.name,lang)}</b>{selectedProduct.sourceUrl&&<a href={selectedProduct.sourceUrl} target="_blank" rel="noreferrer">{vi?'Mở trang Cocoon chính thức':'Open official Cocoon page'} <ArrowRight size={13}/></a>}</div></div>
+
+      {type==='video'?<div className="official-media"><iframe src="https://www.youtube.com/embed/rH86s5h8yQs?rel=0" title="Cocoon official winter melon sunscreen video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe><div className="official-caption"><Video size={17}/><span>{vi?'Video chính thức từ Cocoon Vietnam Official. Tải một file video ở dưới để COSMO trích frame và chạy model thật.':'Official Cocoon Vietnam video. Upload a video below for COSMO to sample frames and run real inference.'}</span></div></div>:type==='audio'?<div className="official-media audio-source"><iframe src="https://www.youtube.com/embed/rH86s5h8yQs?rel=0" title="Cocoon official audio source" allow="autoplay; encrypted-media" allowFullScreen></iframe><p>{vi?'Âm thanh phát từ video Cocoon chính thức. Upload audio để đo waveform thật; COSMO chưa gắn xác suất voice-clone vì model audio phù hợp quá nặng cho browser prototype.':'Audio plays from Cocoon’s official video. Upload audio for real waveform metrics; COSMO does not invent a voice-clone score because suitable audio models are too heavy for this browser prototype.'}</p></div>:type==='image'?<div className="image-inspect"><img src={preview||selectedProduct.image} alt={txt(selectedProduct.name,lang)}/><div className="inspect-note"><b>{preview?(vi?'Ảnh bạn vừa tải lên':'Your uploaded image'):(vi?'Ảnh sản phẩm chính thức Cocoon':'Official Cocoon product image')}</b><p>{vi?'Bấm chạy để vừa đo pixel vừa chạy detector AI thật.':'Run analysis to measure pixels and execute the real AI detector.'}</p></div></div>:type==='text'?<div className="text-inspect"><div className="claim-card"><small>{vi?'Mô tả nguồn Cocoon':'Cocoon source description'}</small><b>{txt(selectedProduct.name,lang)}</b><p>{txt(selectedProduct.description,lang)}</p></div><div className="claim-list">{selectedProduct.claims.map((c,i)=><div key={i}><CheckCircle2 size={17}/><span>{txt(c,lang)}</span></div>)}</div></div>:<div className="compare-inspect"><div><small>{vi?'Ảnh nguồn Cocoon':'Cocoon source image'}</small><img src={selectedProduct.image}/></div><div><small>{preview?(vi?'Ảnh tải lên để đối chiếu':'Uploaded comparison'):(vi?'Chưa có ảnh đối chiếu':'No comparison image yet')}</small>{preview?<img src={preview}/>:<div className="empty-compare">{vi?'Tải một ảnh để chạy detector trên ảnh đối chiếu.':'Upload an image to run the detector on the comparison.'}</div>}</div></div>}
+
+      <label className="upload-bar"><Upload size={18}/><div><b>{uploaded||(vi?'Tải media để phân tích thật':'Upload media for real analysis')}</b><small>{vi?'File được đọc cục bộ; model chạy trực tiếp trong browser.':'The file is read locally and the model runs directly in your browser.'}</small></div><input type="file" accept={type==='video'?'video/*':type==='image'||type==='compare'?'image/*':type==='audio'?'audio/*':'*/*'} onChange={e=>setLocalFile(e.target.files?.[0]||null)}/></label>
+      <button className="primary full large" disabled={running} onClick={run}>{running?<><RefreshCcw className="spin" size={18}/>{vi?'Đang chạy inference thật…':'Running real inference…'} {progress}%</>:<><ScanSearch size={18}/>{type==='image'||type==='compare'||type==='video'?(vi?'Chạy AI inference thật':'Run real AI inference'):(vi?'Chạy phân tích tín hiệu thật':'Run real signal analysis')}</>}</button>{running&&<div className="progress"><span style={{width:`${progress}%`}}></span></div>}
+    </section>
+
+      <section className="panel result-panel real-analysis-panel"><div className="result-head"><div><small>{vi?'KẾT QUẢ SINH TẠI THỜI ĐIỂM CHẠY':'LIVE GENERATED RESULT'}</small><h2>{imageAI?imageVerdict:videoAI?videoVerdict:technical.length?(vi?'Đã phân tích':'Inspected'):(vi?'Chưa chạy':'Not run')}</h2></div><span className="real-source-badge"><Database size={14}/>{vi?'Không preset':'Not preset'}</span></div>
+        {imageAI&&<div className={`inference-verdict ${imageAI.verdict==='likely_fake'?'danger':'ok'}`}><div><small>{vi?'XÁC SUẤT AI-GENERATED':'AI-GENERATED PROBABILITY'}</small><strong>{pct(imageAI.fakeProbability)}</strong></div><div className="prob-bars"><label><span>{vi?'AI-generated / fake':'AI-generated / fake'}</span><b>{pct(imageAI.fakeProbability)}</b></label><div><i style={{width:pct(imageAI.fakeProbability)}}></i></div><label><span>{vi?'Ảnh thật':'Real'}</span><b>{pct(imageAI.realProbability)}</b></label><div className="real"><i style={{width:pct(imageAI.realProbability)}}></i></div></div><small>{imageAI.model} · {imageAI.variant} · {Math.round(imageAI.elapsedMs)} ms</small></div>}
+
+        {videoAI&&<div className="video-inference-result"><div className="video-score-grid"><div><small>{vi?'TRUNG BÌNH CÁC FRAME':'FRAME AVERAGE'}</small><strong>{pct(videoAI.averageFakeProbability)}</strong></div><div><small>{vi?'FRAME RỦI RO CAO NHẤT':'MAX FRAME'}</small><strong>{pct(videoAI.maxFakeProbability)}</strong></div><div><small>{vi?'SỐ FRAME ĐÃ CHẠY':'FRAMES ANALYZED'}</small><strong>{videoAI.frames.length}</strong></div></div><div className="frame-results">{videoAI.frames.map((f,i)=><div key={i}><span>00:{f.time.toFixed(1)}</span><div><i style={{width:pct(f.fakeProbability)}}></i></div><b>{pct(f.fakeProbability)}</b></div>)}</div><small>{videoAI.model} · frame-level inference · {Math.round(videoAI.elapsedMs)} ms</small></div>}
+
+        {technical.length>0&&<div className="technical-results">{technical.map((r,i)=><div key={i}><span>{r.label}</span><strong>{r.value}</strong>{r.note&&<small>{r.note}</small>}</div>)}</div>}
+        {!technical.length&&!imageAI&&!videoAI&&<div className="analysis-empty"><ScanSearch size={36}/><h3>{vi?'Bấm chạy để tạo kết quả mới':'Run analysis to generate a fresh result'}</h3><p>{vi?'Không có score hard-code trong màn hình này.':'There is no hard-coded score in this screen.'}</p></div>}
+        {modelError&&<div className="model-error"><AlertTriangle size={17}/><div><b>{vi?'Model chưa chạy được':'Model could not run'}</b><small>{modelError}</small></div></div>}
+        <div className="method-note"><ShieldCheck size={17}/><p>{vi?'Detector này được huấn luyện để phát hiện ảnh do AI tạo. Một score cao/thấp không tự chứng minh nguồn gốc sản phẩm. Với video, COSMO đang tổng hợp kết quả từ các frame mẫu chứ chưa dùng model temporal. Audio hiện chỉ đo tín hiệu thật, chưa phân loại voice clone.':'This detector targets AI-generated imagery. A high or low score does not by itself prove product provenance. Video results aggregate sampled frames rather than a temporal model. Audio currently reports real signal measurements but does not classify voice clones.'}</p></div>
+      </section></div>
   </div>
 }
 
