@@ -25,7 +25,6 @@ for line in raw.splitlines():
 if current:
     parts[current] = '\n'.join(buf).strip()
 
-# Type-only React namespace is intentionally avoided in the payload.
 parts = {k: v.replace('e:React.FormEvent', 'e:any') for k, v in parts.items()}
 
 imports = "import { classifyAudioFile, type AudioForensicsResult } from './audioForensics'\nimport { loadActivities, loadAppState, logActivity, saveAppState, sha256File, type ActivityRow } from './persistence'\n"
@@ -33,7 +32,6 @@ anchor = "import { classifyBlob, classifyVideoFile, type ImageForensicsResult, t
 if "from './audioForensics'" not in app:
     app = app.replace(anchor, anchor + imports, 1)
 
-# Add auth/session state and restore persisted product overrides.
 state_anchor = "  const [backend,setBackend]=useState<'connected'|'local'|'checking'>('checking')\n"
 if 'const [authOpen' not in app:
     app = app.replace(state_anchor, state_anchor + "  const [authOpen,setAuthOpen]=useState(false)\n  const [userEmail,setUserEmail]=useState<string|null>(null)\n", 1)
@@ -51,14 +49,19 @@ if '{authOpen && <AuthModal' not in app:
 
 app = app.replace('<footer className="site-footer"><span>© 2026 COSMO Trust Platform</span><span>{tt.brandDisclaimer}</span></footer>', '<footer className="site-footer"><span>© 2026 COSMO Trust Platform</span><span>{lang===\'vi\'?\'Minh bạch sản phẩm · Xác minh nội dung · Lịch sử bằng chứng\':\'Product transparency · Content verification · Evidence history\'}</span></footer>')
 
-# Replace entire functional blocks with the final connected versions.
+# Replace complete top-level function blocks by locating the next function declaration.
+# This is independent of whether the original source uses one-line or multi-line components.
 def replace_block(start_name, next_name, payload_key):
     global app
-    pattern = re.compile(rf"function {start_name}\([\s\S]*?\n\}}\n\nfunction {next_name}")
-    m = pattern.search(app)
-    if not m:
-        raise SystemExit(f'Could not locate {start_name} -> {next_name}')
-    app = app[:m.start()] + parts[payload_key] + f"\n\nfunction {next_name}" + app[m.end():]
+    start_token = f"function {start_name}("
+    next_token = f"function {next_name}("
+    start = app.find(start_token)
+    if start < 0:
+        raise SystemExit(f'Could not locate start function {start_name}')
+    end = app.find(next_token, start + len(start_token))
+    if end < 0:
+        raise SystemExit(f'Could not locate next function {next_name}')
+    app = app[:start] + parts[payload_key] + "\n\n" + app[end:]
 
 replace_block('TopBar', 'Home', 'TOPBAR')
 replace_block('AdminPortal', 'Dashboard', 'ADMINPORTAL')
@@ -70,7 +73,6 @@ replace_block('Complaints', 'Reports', 'COMPLAINTS')
 replace_block('Reports', 'Integrations', 'REPORTS')
 replace_block('Integrations', 'Scope', 'INTEGRATIONS')
 
-# Remove presentation/demo language and make the brand story read like a live storefront.
 replacements = {
     "quick:'Trình diễn nhanh'": "quick:'Khám phá'",
     "quick:'Quick tour'": "quick:'Explore'",
@@ -102,17 +104,14 @@ replacements = {
 for old,new in replacements.items():
     app = app.replace(old,new)
 
-# Keep language professional in remaining visible copy.
 app = app.replace('prototype SaaS', 'nền tảng SaaS').replace('SaaS prototype', 'SaaS platform')
 app_path.write_text(app)
 
-# Persist auth sessions for the real sign-in button.
 supa = supa_path.read_text()
 supa = supa.replace("auth: { persistSession: false },", "auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },")
 supa = supa.replace('// Public client configuration for the COSMO demo project.', '// Public client configuration for the COSMO workspace.')
 supa_path.write_text(supa)
 
-# Host the image detector model with the application so inference does not depend on HF at runtime.
 forensics = forensics_path.read_text()
 forensics = re.sub(r"const MODEL_URL = '[^']+'", "const MODEL_URL = '/models/image-deepfake.onnx'", forensics, count=1)
 forensics_path.write_text(forensics)
