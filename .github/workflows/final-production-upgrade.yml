@@ -1,0 +1,79 @@
+name: COSMO Final Production Upgrade
+
+on:
+  push:
+    branches:
+      - cosmo-final-production-pass
+    paths:
+      - .github/workflows/final-production-upgrade.yml
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: cosmo-final-production-pass
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies and Playwright test package
+        run: |
+          npm install
+          npm install --save-dev @playwright/test@1.55.0
+
+      - name: Prepare local AI models
+        run: |
+          mkdir -p public/models public/media
+          curl -fL --retry 3 --retry-delay 3 "https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT/resolve/main/onnx/model_int8.onnx" -o public/models/image-deepfake.onnx
+          curl -fL --retry 3 --retry-delay 3 "https://huggingface.co/SpeechAntiSpoofingBenchmarks/AASIST/resolve/main/aasist.onnx" -o public/models/aasist.onnx
+          test $(stat -c%s public/models/image-deepfake.onnx) -gt 10000000
+          test $(stat -c%s public/models/aasist.onnx) -gt 500000
+
+      - name: Build product-matched audio and video controls
+        run: |
+          if ! command -v espeak-ng >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y espeak-ng
+          fi
+          espeak-ng -v vi -s 145 -w public/media/cocoon-synthetic-voice.wav "Sữa chống nắng bí đao Cocoon, bảo vệ da hằng ngày với kết cấu mỏng nhẹ và công thức chăm sóc da."
+          ffmpeg -y -loop 1 -i public/cocoon/sua-chong-nang-bi-dao-50ml.png -i public/media/cocoon-synthetic-voice.wav -t 7 -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -c:v libx264 -preset veryfast -c:a aac -b:a 128k -shortest -movflags +faststart public/sample-scan.mp4
+
+      - name: Apply final UI, persistence and auth pass
+        run: python scripts/apply_final_production.py
+
+      - name: Type check
+        run: npm run check
+
+      - name: Production build
+        run: npm run build
+
+      - name: Runtime dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify generated release assets
+        run: |
+          test -f dist/release.json
+          test -f dist/models/image-deepfake.onnx
+          test -f dist/models/aasist.onnx
+          test -f dist/media/cocoon-synthetic-voice.wav
+          test -f dist/sample-scan.mp4
+          grep -q 'final-production-pass' dist/release.json
+
+      - name: Commit generated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src/App.tsx src/supabase.ts src/forensics.ts src/audioForensics.ts src/persistence.ts src/styles.css public/models public/media public/sample-scan.mp4 public/release.json tests/live-e2e.spec.ts .github/workflows/live-cloudflare-e2e.yml scripts/apply_final_production.py scripts/final_components.txt scripts/final_production_css.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Complete COSMO production-ready prototype pass"
+          git push origin cosmo-final-production-pass
