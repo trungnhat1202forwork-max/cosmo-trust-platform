@@ -1,4 +1,5 @@
 name: COSMO Final Production Upgrade
+# revision: resilient-component-patching-v3
 
 on:
   push:
