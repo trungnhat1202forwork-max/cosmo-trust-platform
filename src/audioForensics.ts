@@ -1,6 +1,6 @@
 import * as ort from 'onnxruntime-web'
 
-const AUDIO_MODEL_URL = '/models/aasist.onnx'
+const AUDIO_MODEL_URL = 'https://huggingface.co/SpeechAntiSpoofingBenchmarks/AASIST/resolve/main/aasist.onnx'
 const AUDIO_MODEL_NAME = 'AASIST Speech Anti-Spoofing'
 const AUDIO_MODEL_VARIANT = 'ASVspoof2019 LA · ONNX · class 1 bona fide'
 const TARGET_SAMPLE_RATE = 16000
