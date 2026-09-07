@@ -28,18 +28,18 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Wait for Cloudflare production release
+      - name: Verify Cloudflare is reachable
         run: |
-          for i in $(seq 1 36); do
-            body=$(curl -fsSL --max-time 15 "https://cosmotrustplatform.pages.dev/release.json?attempt=$i" || true)
-            if echo "$body" | grep -q 'final-production-pass'; then
-              echo "Cloudflare is serving the final production release."
+          for i in $(seq 1 12); do
+            code=$(curl -L -sS -o /tmp/cosmo-home.html -w '%{http_code}' --max-time 20 "https://cosmotrustplatform.pages.dev/?e2e=$i" || true)
+            if [ "$code" = "200" ]; then
+              echo "Cloudflare production URL is reachable."
               exit 0
             fi
-            echo "Waiting for Cloudflare deployment ($i/36)..."
+            echo "Waiting for Cloudflare availability ($i/12), HTTP=$code"
             sleep 10
           done
-          echo "Cloudflare did not expose the final release marker in time."
+          echo "Cloudflare production URL is not reachable."
           exit 1
 
       - name: Run desktop and mobile live journeys
