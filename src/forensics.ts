@@ -1,10 +1,11 @@
 import * as ort from 'onnxruntime-web'
 
-const MODEL_URL = '/models/image-deepfake.onnx'
+const MODEL_URL = 'https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT/resolve/main/onnx/model_int8.onnx'
 const MODEL_NAME = 'CommunityForensics DeepfakeDet-ViT'
 const MODEL_VARIANT = 'corrected v1.1 INT8 (July 2026)'
 
-// Keep inference fully client-side. WASM binaries are loaded from the official npm CDN.
+// Keep inference fully client-side. Model and WASM runtime are fetched by the browser
+// so the Cloudflare static deployment stays small and reliable.
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/'
 if (typeof navigator !== 'undefined') {
   ort.env.wasm.numThreads = Math.max(1, Math.min(2, navigator.hardwareConcurrency || 1))
@@ -56,7 +57,6 @@ function preprocessBitmap(bitmap: ImageBitmap) {
   const cropLeft = Math.max(0, (resizedWidth - cropSize) / 2)
   const cropTop = Math.max(0, (resizedHeight - cropSize) / 2)
 
-  // Convert crop coordinates from the resized image back to the source bitmap.
   const sx = cropLeft / scale
   const sy = cropTop / scale
   const sw = cropSize / scale
@@ -79,109 +79,90 @@ function preprocessBitmap(bitmap: ImageBitmap) {
     const p = i * 4
     input[i] = (pixels[p] / 255 - mean[0]) / std[0]
     input[size + i] = (pixels[p + 1] / 255 - mean[1]) / std[1]
-    input[size * 2 + i] = (pixels[p + 2] / 255 - mean[2]) / std[2]
+    input[2 * size + i] = (pixels[p + 2] / 255 - mean[2]) / std[2]
   }
-
   return new ort.Tensor('float32', input, [1, 3, cropSize, cropSize])
 }
 
-export async function classifyBitmap(bitmap: ImageBitmap): Promise<ImageForensicsResult> {
-  const started = performance.now()
-  const session = await getSession()
-  const tensor = preprocessBitmap(bitmap)
-  const output = await session.run({ pixel_values: tensor })
-  const outputName = session.outputNames[0]
-  const raw = Number(output[outputName].data[0])
-  const fakeProbability = sigmoid(raw)
-  return {
-    fakeProbability,
-    realProbability: 1 - fakeProbability,
-    verdict: fakeProbability >= 0.5 ? 'likely_fake' : 'likely_real',
-    elapsedMs: performance.now() - started,
-    model: MODEL_NAME,
-    variant: MODEL_VARIANT,
-  }
-}
-
 export async function classifyBlob(blob: Blob): Promise<ImageForensicsResult> {
+  const started = performance.now()
   const bitmap = await createImageBitmap(blob)
   try {
-    return await classifyBitmap(bitmap)
-  } finally {
-    bitmap.close()
-  }
-}
-
-export async function classifyImageUrl(url: string): Promise<ImageForensicsResult> {
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) throw new Error(`Unable to fetch image (${response.status})`)
-  return classifyBlob(await response.blob())
-}
-
-function waitForEvent(target: EventTarget, event: string) {
-  return new Promise<void>((resolve, reject) => {
-    const done = () => { cleanup(); resolve() }
-    const fail = () => { cleanup(); reject(new Error(`Media event failed: ${event}`)) }
-    const cleanup = () => {
-      target.removeEventListener(event, done)
-      target.removeEventListener('error', fail)
-    }
-    target.addEventListener(event, done, { once: true })
-    target.addEventListener('error', fail, { once: true })
-  })
-}
-
-export async function classifyVideoFile(
-  file: File,
-  onProgress?: (done: number, total: number) => void,
-): Promise<VideoForensicsResult> {
-  const started = performance.now()
-  const url = URL.createObjectURL(file)
-  const video = document.createElement('video')
-  video.muted = true
-  video.preload = 'auto'
-  video.playsInline = true
-  video.src = url
-
-  try {
-    if (video.readyState < 1) await waitForEvent(video, 'loadedmetadata')
-    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1
-    const fractions = duration < 2 ? [0.25, 0.5, 0.75] : [0.1, 0.3, 0.5, 0.7, 0.9]
-    const times = fractions.map(f => Math.min(Math.max(0, duration * f), Math.max(0, duration - 0.05)))
-    const frames: VideoFrameResult[] = []
-
-    for (let i = 0; i < times.length; i++) {
-      const t = times[i]
-      if (Math.abs(video.currentTime - t) > 0.02) {
-        video.currentTime = t
-        await waitForEvent(video, 'seeked')
-      }
-      const bitmap = await createImageBitmap(video)
-      try {
-        const result = await classifyBitmap(bitmap)
-        frames.push({ ...result, time: t })
-      } finally {
-        bitmap.close()
-      }
-      onProgress?.(i + 1, times.length)
-    }
-
-    const avg = frames.reduce((sum, frame) => sum + frame.fakeProbability, 0) / Math.max(1, frames.length)
-    const max = Math.max(...frames.map(frame => frame.fakeProbability))
-    const mixed = avg < 0.5 && max >= 0.7
-
+    const tensor = preprocessBitmap(bitmap)
+    const session = await getSession()
+    const inputName = session.inputNames[0]
+    const output = await session.run({ [inputName]: tensor })
+    const data = output[session.outputNames[0]].data
+    const fakeProbability = sigmoid(Number(data[0]))
+    const realProbability = 1 - fakeProbability
     return {
-      frames,
-      averageFakeProbability: avg,
-      maxFakeProbability: max,
-      verdict: mixed ? 'mixed' : avg >= 0.5 ? 'likely_fake' : 'likely_real',
+      fakeProbability,
+      realProbability,
+      verdict: fakeProbability >= 0.5 ? 'likely_fake' : 'likely_real',
       elapsedMs: performance.now() - started,
       model: MODEL_NAME,
       variant: MODEL_VARIANT,
     }
   } finally {
-    video.removeAttribute('src')
-    video.load()
+    bitmap.close()
+  }
+}
+
+function seekVideo(video: HTMLVideoElement, time: number) {
+  return new Promise<void>((resolve, reject) => {
+    const onSeeked = () => { cleanup(); resolve() }
+    const onError = () => { cleanup(); reject(new Error('Unable to seek video')) }
+    const cleanup = () => {
+      video.removeEventListener('seeked', onSeeked)
+      video.removeEventListener('error', onError)
+    }
+    video.addEventListener('seeked', onSeeked, { once: true })
+    video.addEventListener('error', onError, { once: true })
+    video.currentTime = time
+  })
+}
+
+export async function classifyVideoFile(file: File, onProgress?: (done: number, total: number) => void): Promise<VideoForensicsResult> {
+  const started = performance.now()
+  const url = URL.createObjectURL(file)
+  const video = document.createElement('video')
+  video.muted = true
+  video.preload = 'auto'
+  video.src = url
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve()
+      video.onerror = () => reject(new Error('Unable to load video'))
+    })
+    const duration = Math.max(0.2, Number.isFinite(video.duration) ? video.duration : 1)
+    const count = Math.min(6, Math.max(3, Math.ceil(duration / 2)))
+    const times = Array.from({ length: count }, (_, i) => Math.min(duration - 0.05, duration * (i + 1) / (count + 1)))
+    const canvas = document.createElement('canvas')
+    const results: VideoFrameResult[] = []
+    for (let i = 0; i < times.length; i++) {
+      await seekVideo(video, times[i])
+      canvas.width = Math.max(1, video.videoWidth)
+      canvas.height = Math.max(1, video.videoHeight)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas 2D context unavailable')
+      ctx.drawImage(video, 0, 0)
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Frame capture failed')), 'image/jpeg', 0.92))
+      results.push({ ...(await classifyBlob(blob)), time: times[i] })
+      onProgress?.(i + 1, times.length)
+    }
+    const averageFakeProbability = results.reduce((s, r) => s + r.fakeProbability, 0) / results.length
+    const maxFakeProbability = Math.max(...results.map(r => r.fakeProbability))
+    return {
+      frames: results,
+      averageFakeProbability,
+      maxFakeProbability,
+      verdict: averageFakeProbability >= 0.6 ? 'likely_fake' : maxFakeProbability >= 0.7 ? 'mixed' : 'likely_real',
+      elapsedMs: performance.now() - started,
+      model: MODEL_NAME,
+      variant: MODEL_VARIANT,
+    }
+  } finally {
     URL.revokeObjectURL(url)
+    video.remove()
   }
 }
