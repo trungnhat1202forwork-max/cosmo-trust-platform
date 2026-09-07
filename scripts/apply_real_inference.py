@@ -39,6 +39,7 @@ product_pattern = re.compile(r"slug:'([^']+)'[\s\S]*?image:cocoonAsset\('([^']+)
 out_dir = root / 'public' / 'cocoon'
 out_dir.mkdir(parents=True, exist_ok=True)
 seen = set()
+saved = 0
 for slug, url in product_pattern.findall(data):
     if slug in seen or not url.startswith('https://image.cocoonvietnam.com/'):
         continue
@@ -47,15 +48,16 @@ for slug, url in product_pattern.findall(data):
     if suffix not in {'.jpg', '.jpeg', '.png', '.webp'}:
         suffix = '.jpg'
     local_rel = f'/cocoon/{slug}{suffix}'
-    target = root / local_rel.lstrip('/')
+    target = out_dir / f'{slug}{suffix}'
     try:
         request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 COSMO prototype'})
         with urllib.request.urlopen(request, timeout=30) as response:
             target.write_bytes(response.read())
         data = data.replace(url, local_rel)
+        saved += 1
         print(f'cached {slug}: {url} -> {local_rel}')
     except Exception as exc:
         print(f'warning: could not cache {url}: {exc}')
 
 data_path.write_text(data)
-print(f'Updated App.tsx, styles.css, data.ts; cached {len(seen)} primary Cocoon images')
+print(f'Updated App.tsx, styles.css, data.ts; cached {saved}/{len(seen)} primary Cocoon images')
