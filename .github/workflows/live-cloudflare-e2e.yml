@@ -28,21 +28,21 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify Cloudflare is reachable
+      - name: Verify Cloudflare Pages production is reachable
         run: |
-          for i in $(seq 1 12); do
-            code=$(curl -L -sS -o /tmp/cosmo-home.html -w '%{http_code}' --max-time 20 "https://cosmotrustplatform.pages.dev/?e2e=$i" || true)
+          for i in $(seq 1 18); do
+            code=$(curl -L -sS -o /tmp/cosmo-home.html -w '%{http_code}' --max-time 20 "https://cosmo-trust-platform.pages.dev/?e2e=$i" || true)
             if [ "$code" = "200" ]; then
-              echo "Cloudflare production URL is reachable."
+              echo "Correct Cloudflare Pages production URL is reachable."
               exit 0
             fi
-            echo "Waiting for Cloudflare availability ($i/12), HTTP=$code"
+            echo "Waiting for Cloudflare Pages production ($i/18), HTTP=$code"
             sleep 10
           done
-          echo "Cloudflare production URL is not reachable."
+          echo "Cloudflare Pages production URL is not reachable."
           exit 1
 
       - name: Run desktop and mobile live journeys
         env:
-          COSMO_BASE_URL: https://cosmotrustplatform.pages.dev
+          COSMO_BASE_URL: https://cosmo-trust-platform.pages.dev
         run: npx playwright test tests/live-e2e.spec.ts --workers=1 --reporter=line
