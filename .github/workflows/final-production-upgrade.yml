@@ -41,10 +41,8 @@ jobs:
 
       - name: Build product-matched audio and video controls
         run: |
-          if ! command -v espeak-ng >/dev/null 2>&1; then
-            sudo apt-get update -y
-            sudo apt-get install -y espeak-ng
-          fi
+          sudo apt-get update -y
+          sudo apt-get install -y espeak-ng ffmpeg
           espeak-ng -v vi -s 145 -w public/media/cocoon-synthetic-voice.wav "Sữa chống nắng bí đao Cocoon, bảo vệ da hằng ngày với kết cấu mỏng nhẹ và công thức chăm sóc da."
           ffmpeg -y -loop 1 -i public/cocoon/sua-chong-nang-bi-dao-50ml.png -i public/media/cocoon-synthetic-voice.wav -t 7 -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p" -c:v libx264 -preset veryfast -c:a aac -b:a 128k -shortest -movflags +faststart public/sample-scan.mp4
 
