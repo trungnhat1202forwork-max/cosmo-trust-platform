@@ -43,5 +43,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json src/App.tsx src/data.ts src/styles.css src/forensics.ts public/cocoon scripts/apply_real_inference.py scripts/ailab_real_inference.tsx.txt scripts/forensics_css.txt
           git diff --cached --quiet && exit 0
-          git commit -m "Run corrected deepfake model in browser"
+          git commit -m "Cache official Cocoon media for real inference"
           git push origin cosmo-real-deepfake-inference
